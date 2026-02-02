@@ -27,3 +27,10 @@ interface Response {
   json(): Promise<unknown>;
   text(): Promise<string>;
 }
+
+declare const Buffer: {
+  from(data: string, encoding?: string): { toString(encoding: string): string };
+};
+
+declare function parseInt(value: string, radix?: number): number;
+declare function encodeURIComponent(value: string): string;
