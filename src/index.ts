@@ -24,20 +24,32 @@ const toolHandlers = new Map<
   string,
   (input: unknown) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>
 >([
+  // Sync tools
   ['openclaw_chat', (input) => tools.handleOpenclawChat(client, input)],
   ['openclaw_sessions', (input) => tools.handleOpenclawSessions(client, input)],
   ['openclaw_history', (input) => tools.handleOpenclawHistory(client, input)],
   ['openclaw_status', (input) => tools.handleOpenclawStatus(client, input)],
   ['openclaw_memory', (input) => tools.handleOpenclawMemory(client, input)],
+  // Async task tools
+  ['openclaw_chat_async', (input) => tools.handleOpenclawChatAsync(client, input)],
+  ['openclaw_task_status', (input) => tools.handleOpenclawTaskStatus(client, input)],
+  ['openclaw_task_list', (input) => tools.handleOpenclawTaskList(client, input)],
+  ['openclaw_task_cancel', (input) => tools.handleOpenclawTaskCancel(client, input)],
 ]);
 
 // All tool definitions
 const allTools = [
+  // Sync tools
   tools.openclawChatTool,
   tools.openclawSessionsTool,
   tools.openclawHistoryTool,
   tools.openclawStatusTool,
   tools.openclawMemoryTool,
+  // Async task tools
+  tools.openclawChatAsyncTool,
+  tools.openclawTaskStatusTool,
+  tools.openclawTaskListTool,
+  tools.openclawTaskCancelTool,
 ];
 
 async function main() {
