@@ -72,6 +72,8 @@ See [Installation Guide](docs/installation.md) for details.
 
 ## Available Tools
 
+### Sync Tools
+
 | Tool | Description |
 |------|-------------|
 | `openclaw_chat` | Send messages to OpenClaw and get responses |
@@ -79,6 +81,15 @@ See [Installation Guide](docs/installation.md) for details.
 | `openclaw_history` | Get conversation history from a session |
 | `openclaw_status` | Check OpenClaw gateway health |
 | `openclaw_memory` | Read, write, and search OpenClaw's memory |
+
+### Async Tools (for long-running operations)
+
+| Tool | Description |
+|------|-------------|
+| `openclaw_chat_async` | Queue a message, get task_id immediately |
+| `openclaw_task_status` | Check task progress and get results |
+| `openclaw_task_list` | List all tasks with filtering |
+| `openclaw_task_cancel` | Cancel a pending task |
 
 ## Documentation
 
