@@ -2,7 +2,7 @@
   "name": "openclaw-mcp",
   "version": "0.1.0",
   "description": "Model Context Protocol (MCP) server for OpenClaw AI assistant integration",
-  "author": "freema",
+  "author": "Tomáš Grasl <https://www.tomasgrasl.cz/>",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
@@ -58,9 +58,11 @@
   },
   "files": [
     "dist",
+    "docs",
     "README.md",
     "LICENSE"
   ],
+  "homepage": "https://github.com/freema/openclaw-mcp#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/freema/openclaw-mcp.git"
