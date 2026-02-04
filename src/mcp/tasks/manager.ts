@@ -1,11 +1,11 @@
 /**
  * Task Manager for async operations
- * 
+ *
  * Manages background tasks with status tracking, allowing
  * long-running operations to be started and polled for results.
  */
 
-import { log, logError } from '../../utils/logger.js';
+import { log } from '../../utils/logger.js';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -78,10 +78,10 @@ class TaskManager {
     let tasks = Array.from(this.tasks.values());
 
     if (filter?.status) {
-      tasks = tasks.filter(t => t.status === filter.status);
+      tasks = tasks.filter((t) => t.status === filter.status);
     }
     if (filter?.sessionId) {
-      tasks = tasks.filter(t => t.sessionId === filter.sessionId);
+      tasks = tasks.filter((t) => t.sessionId === filter.sessionId);
     }
 
     // Sort by priority (desc) then creation time (asc)
@@ -99,11 +99,11 @@ class TaskManager {
     if (!task) return false;
 
     task.status = status;
-    
+
     if (status === 'running' && !task.startedAt) {
       task.startedAt = new Date();
     }
-    
+
     if (status === 'completed' || status === 'failed' || status === 'cancelled') {
       task.completedAt = new Date();
     }
@@ -121,7 +121,7 @@ class TaskManager {
   cancel(id: string): boolean {
     const task = this.tasks.get(id);
     if (!task) return false;
-    
+
     if (task.status !== 'pending') {
       return false; // Can only cancel pending tasks
     }

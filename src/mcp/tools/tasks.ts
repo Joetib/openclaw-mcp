@@ -1,6 +1,6 @@
 /**
  * Async Task Tools for OpenClaw MCP
- * 
+ *
  * Provides async/background task management for long-running operations.
  */
 
@@ -16,7 +16,8 @@ import { log } from '../../utils/logger.js';
 
 export const openclawChatAsyncTool: Tool = {
   name: 'openclaw_chat_async',
-  description: 'Send a message to OpenClaw asynchronously. Returns a task_id immediately that can be polled for results. Use this for potentially long-running conversations.',
+  description:
+    'Send a message to OpenClaw asynchronously. Returns a task_id immediately that can be polled for results. Use this for potentially long-running conversations.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -74,7 +75,7 @@ export const openclawTaskListTool: Tool = {
 
 export const openclawTaskCancelTool: Tool = {
   name: 'openclaw_task_cancel',
-  description: 'Cancel a pending task. Only works for tasks that haven\'t started yet.',
+  description: "Cancel a pending task. Only works for tasks that haven't started yet.",
   inputSchema: {
     type: 'object',
     properties: {
@@ -116,19 +117,19 @@ async function taskProcessor(): Promise<void> {
 
   while (processorRunning) {
     const task = taskManager.getNextPending();
-    
+
     if (task) {
       await processTask(task, processorClient);
     } else {
       // No pending tasks, wait a bit
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 }
 
 export function startTaskProcessor(client: OpenClawClient): void {
   if (processorRunning) return;
-  
+
   processorClient = client;
   processorRunning = true;
   taskProcessor().catch(() => {
@@ -174,11 +175,17 @@ export async function handleOpenclawChatAsync(
     priority: priority ?? 0,
   });
 
-  return successResponse(JSON.stringify({
-    task_id: task.id,
-    status: task.status,
-    message: 'Task queued. Use openclaw_task_status to check progress.',
-  }, null, 2));
+  return successResponse(
+    JSON.stringify(
+      {
+        task_id: task.id,
+        status: task.status,
+        message: 'Task queued. Use openclaw_task_status to check progress.',
+      },
+      null,
+      2
+    )
+  );
 }
 
 interface TaskStatusInput {
@@ -237,7 +244,7 @@ export async function handleOpenclawTaskList(
   const tasks = taskManager.list({ status, sessionId: session_id });
   const stats = taskManager.stats();
 
-  const taskList = tasks.map(t => ({
+  const taskList = tasks.map((t) => ({
     task_id: t.id,
     type: t.type,
     status: t.status,
@@ -246,10 +253,16 @@ export async function handleOpenclawTaskList(
     has_result: t.status === 'completed' && !!t.result,
   }));
 
-  return successResponse(JSON.stringify({
-    stats,
-    tasks: taskList,
-  }, null, 2));
+  return successResponse(
+    JSON.stringify(
+      {
+        stats,
+        tasks: taskList,
+      },
+      null,
+      2
+    )
+  );
 }
 
 interface TaskCancelInput {
@@ -272,7 +285,9 @@ export async function handleOpenclawTaskCancel(
   }
 
   if (task.status !== 'pending') {
-    return errorResponse(`Cannot cancel task with status: ${task.status}. Only pending tasks can be cancelled.`);
+    return errorResponse(
+      `Cannot cancel task with status: ${task.status}. Only pending tasks can be cancelled.`
+    );
   }
 
   const cancelled = taskManager.cancel(task_id);
@@ -280,9 +295,15 @@ export async function handleOpenclawTaskCancel(
     return errorResponse('Failed to cancel task');
   }
 
-  return successResponse(JSON.stringify({
-    task_id,
-    status: 'cancelled',
-    message: 'Task cancelled successfully',
-  }, null, 2));
+  return successResponse(
+    JSON.stringify(
+      {
+        task_id,
+        status: 'cancelled',
+        message: 'Task cancelled successfully',
+      },
+      null,
+      2
+    )
+  );
 }

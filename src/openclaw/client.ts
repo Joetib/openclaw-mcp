@@ -70,9 +70,7 @@ export class OpenClawClient {
   }
 
   async memoryGet(key: string): Promise<OpenClawMemoryResponse> {
-    return this.request<OpenClawMemoryResponse>(
-      `/api/memory/${encodeURIComponent(key)}`
-    );
+    return this.request<OpenClawMemoryResponse>(`/api/memory/${encodeURIComponent(key)}`);
   }
 
   async memorySet(key: string, value: string): Promise<OpenClawMemoryResponse> {

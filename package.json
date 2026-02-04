@@ -60,7 +60,8 @@
     "dist",
     "docs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "plugins"
   ],
   "homepage": "https://github.com/freema/openclaw-mcp#readme",
   "repository": {

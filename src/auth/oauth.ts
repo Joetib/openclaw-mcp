@@ -1,6 +1,6 @@
 /**
  * OAuth2 Authentication for OpenClaw MCP
- * 
+ *
  * Supports:
  * - Bearer token validation
  * - Token introspection
@@ -42,7 +42,9 @@ export class OAuthValidator {
   /**
    * Validate a bearer token
    */
-  async validateToken(token: string): Promise<{ valid: boolean; info?: TokenInfo; error?: string }> {
+  async validateToken(
+    token: string
+  ): Promise<{ valid: boolean; info?: TokenInfo; error?: string }> {
     // If OAuth is disabled, always allow
     if (!this.config.enabled) {
       return { valid: true };
@@ -50,9 +52,9 @@ export class OAuthValidator {
 
     // Check static API keys first
     if (this.config.apiKeys?.includes(token)) {
-      return { 
-        valid: true, 
-        info: { active: true, sub: 'api-key-user', scope: 'full' } 
+      return {
+        valid: true,
+        info: { active: true, sub: 'api-key-user', scope: 'full' },
       };
     }
 
@@ -63,7 +65,7 @@ export class OAuthValidator {
 
     try {
       const response = await this.introspectToken(token);
-      
+
       if (!response.active) {
         return { valid: false, error: 'Token is not active' };
       }
@@ -71,8 +73,8 @@ export class OAuthValidator {
       // Check required scopes
       if (this.config.requiredScopes?.length) {
         const tokenScopes = (response.scope || '').split(' ');
-        const hasAllScopes = this.config.requiredScopes.every(
-          scope => tokenScopes.includes(scope)
+        const hasAllScopes = this.config.requiredScopes.every((scope) =>
+          tokenScopes.includes(scope)
         );
         if (!hasAllScopes) {
           return { valid: false, error: 'Insufficient scopes' };
@@ -86,9 +88,9 @@ export class OAuthValidator {
 
       return { valid: true, info: response };
     } catch (error) {
-      return { 
-        valid: false, 
-        error: `Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      return {
+        valid: false,
+        error: `Token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
   }
@@ -98,7 +100,7 @@ export class OAuthValidator {
    */
   private async introspectToken(token: string): Promise<TokenInfo> {
     const endpoint = this.config.introspectionEndpoint!;
-    
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
@@ -139,14 +141,14 @@ export class OAuthValidator {
  */
 export function loadOAuthConfig(): OAuthConfig {
   const enabled = process.env.OAUTH_ENABLED === 'true';
-  
+
   return {
     enabled,
     issuer: process.env.OAUTH_ISSUER,
     introspectionEndpoint: process.env.OAUTH_INTROSPECTION_ENDPOINT,
     clientId: process.env.OAUTH_CLIENT_ID,
     clientSecret: process.env.OAUTH_CLIENT_SECRET,
-    requiredScopes: process.env.OAUTH_REQUIRED_SCOPES?.split(',').map(s => s.trim()),
-    apiKeys: process.env.API_KEYS?.split(',').map(s => s.trim()),
+    requiredScopes: process.env.OAUTH_REQUIRED_SCOPES?.split(',').map((s) => s.trim()),
+    apiKeys: process.env.API_KEYS?.split(',').map((s) => s.trim()),
   };
 }
