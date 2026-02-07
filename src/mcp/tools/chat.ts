@@ -1,6 +1,7 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { OpenClawClient } from '../../openclaw/client.js';
 import { successResponse, errorResponse, type ToolResponse } from '../../utils/response-helpers.js';
+import { validateInputIsObject, validateMessage, validateId } from '../../utils/validation.js';
 
 export const openclawChatTool: Tool = {
   name: 'openclaw_chat',
@@ -21,23 +22,30 @@ export const openclawChatTool: Tool = {
   },
 };
 
-interface ChatInput {
-  message: string;
-  session_id?: string;
-}
-
 export async function handleOpenclawChat(
   client: OpenClawClient,
   input: unknown
 ): Promise<ToolResponse> {
-  const { message, session_id } = input as ChatInput;
+  if (!validateInputIsObject(input)) {
+    return errorResponse('Invalid input: expected an object');
+  }
 
-  if (!message || typeof message !== 'string') {
-    return errorResponse('Message is required and must be a string');
+  const msgResult = validateMessage(input.message);
+  if (msgResult.valid === false) {
+    return errorResponse(msgResult.error);
+  }
+
+  let sessionId: string | undefined;
+  if (input.session_id !== undefined) {
+    const sidResult = validateId(input.session_id, 'session_id');
+    if (sidResult.valid === false) {
+      return errorResponse(sidResult.error);
+    }
+    sessionId = sidResult.value;
   }
 
   try {
-    const response = await client.chat(message, session_id);
+    const response = await client.chat(msgResult.value, sessionId);
     return successResponse(response.response);
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : 'Failed to chat with OpenClaw');

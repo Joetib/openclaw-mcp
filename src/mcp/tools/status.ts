@@ -1,6 +1,7 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { OpenClawClient } from '../../openclaw/client.js';
 import { jsonResponse, errorResponse, type ToolResponse } from '../../utils/response-helpers.js';
+import { validateInputIsObject } from '../../utils/validation.js';
 
 export const openclawStatusTool: Tool = {
   name: 'openclaw_status',
@@ -13,8 +14,12 @@ export const openclawStatusTool: Tool = {
 
 export async function handleOpenclawStatus(
   client: OpenClawClient,
-  _input: unknown
+  input: unknown
 ): Promise<ToolResponse> {
+  if (!validateInputIsObject(input)) {
+    return errorResponse('Invalid input: expected an object');
+  }
+
   try {
     const response = await client.health();
     return jsonResponse(response);

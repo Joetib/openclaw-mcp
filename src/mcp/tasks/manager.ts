@@ -7,6 +7,10 @@
 
 import { log } from '../../utils/logger.js';
 
+const MAX_TASKS = 1000;
+const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const CLEANUP_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
+
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface Task {
@@ -33,6 +37,14 @@ export interface TaskCreateOptions {
 class TaskManager {
   private tasks: Map<string, Task> = new Map();
   private taskCounter = 0;
+  private cleanupInterval: ReturnType<typeof setInterval> | undefined;
+
+  constructor() {
+    this.cleanupInterval = setInterval(() => this.cleanup(CLEANUP_MAX_AGE_MS), CLEANUP_INTERVAL_MS);
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref();
+    }
+  }
 
   /**
    * Generate unique task ID
@@ -48,6 +60,12 @@ class TaskManager {
    * Create a new task
    */
   create(options: TaskCreateOptions): Task {
+    if (this.tasks.size >= MAX_TASKS) {
+      throw new Error(
+        `Task limit reached (${MAX_TASKS}). Wait for tasks to complete or cancel pending ones.`
+      );
+    }
+
     const id = this.generateId();
     const task: Task = {
       id,

@@ -29,7 +29,8 @@ Add to your Claude Desktop config:
       "command": "npx",
       "args": ["openclaw-mcp"],
       "env": {
-        "OPENCLAW_URL": "http://127.0.0.1:18789"
+        "OPENCLAW_URL": "http://127.0.0.1:18789",
+        "OPENCLAW_GATEWAY_TOKEN": "your-gateway-token"
       }
     }
   }
@@ -39,9 +40,12 @@ Add to your Claude Desktop config:
 ### Remote (Claude.ai)
 
 ```bash
-OAUTH_ENABLED=true API_KEYS=your-key CORS_ORIGINS=https://claude.ai \
+AUTH_ENABLED=true MCP_CLIENT_ID=openclaw MCP_CLIENT_SECRET=your-secret \
+  CORS_ORIGINS=https://claude.ai OPENCLAW_GATEWAY_TOKEN=your-gateway-token \
   npx openclaw-mcp --transport sse --port 3000
 ```
+
+Then in Claude.ai add a custom connector with your `MCP_CLIENT_ID` and `MCP_CLIENT_SECRET`.
 
 See [Installation Guide](docs/installation.md) for details.
 
@@ -56,13 +60,13 @@ See [Installation Guide](docs/installation.md) for details.
 │  │   Gateway       │◄────►│    Bridge Server        │          │
 │  │   :18789        │      │    :3000                │          │
 │  │                 │      │                         │          │
-│  │  (your AI)      │      │  - OAuth2 auth          │          │
-│  └─────────────────┘      │  - Rate limiting        │          │
-│                           │  - Audit logging        │          │
+│  │  OpenAI-compat  │      │  - OAuth 2.1 auth       │          │
+│  │  /v1/chat/...   │      │  - CORS protection      │          │
+│  └─────────────────┘      │  - Input validation     │          │
 │                           └──────────┬──────────────┘          │
 │                                      │                          │
 └──────────────────────────────────────┼──────────────────────────┘
-                                       │ HTTPS + OAuth2
+                                       │ HTTPS + OAuth 2.1
                                        ▼
                               ┌─────────────────┐
                               │   Claude.ai     │
@@ -77,10 +81,7 @@ See [Installation Guide](docs/installation.md) for details.
 | Tool | Description |
 |------|-------------|
 | `openclaw_chat` | Send messages to OpenClaw and get responses |
-| `openclaw_sessions` | List all active sessions |
-| `openclaw_history` | Get conversation history from a session |
 | `openclaw_status` | Check OpenClaw gateway health |
-| `openclaw_memory` | Read, write, and search OpenClaw's memory |
 
 ### Async Tools (for long-running operations)
 
@@ -104,11 +105,12 @@ See [Installation Guide](docs/installation.md) for details.
 ⚠️ **Always enable authentication in production!**
 
 ```bash
-# Generate secure API key
-openssl rand -hex 32
+# Generate secure client secret
+export MCP_CLIENT_SECRET=$(openssl rand -hex 32)
 
 # Run with auth enabled
-OAUTH_ENABLED=true API_KEYS=your-key openclaw-mcp --transport sse
+AUTH_ENABLED=true MCP_CLIENT_ID=openclaw MCP_CLIENT_SECRET=$MCP_CLIENT_SECRET \
+  openclaw-mcp --transport sse
 ```
 
 Configure CORS to restrict access:

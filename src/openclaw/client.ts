@@ -2,27 +2,46 @@ import { OpenClawConnectionError, OpenClawApiError } from '../utils/errors.js';
 import type {
   OpenClawHealthResponse,
   OpenClawChatResponse,
-  OpenClawSessionsResponse,
-  OpenClawHistoryResponse,
-  OpenClawMemoryResponse,
+  OpenAIChatCompletionResponse,
 } from './types.js';
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export class OpenClawClient {
   private baseUrl: string;
+  private gatewayToken: string | undefined;
+  private timeoutMs: number;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, gatewayToken?: string, timeoutMs: number = DEFAULT_TIMEOUT_MS) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.gatewayToken = gatewayToken;
+    this.timeoutMs = timeoutMs;
+  }
+
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (this.gatewayToken) {
+      headers['Authorization'] = `Bearer ${this.gatewayToken}`;
+    }
+    return headers;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${path}`;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
     try {
       const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
+          ...this.buildHeaders(),
+          ...((options.headers as Record<string, string>) || {}),
         },
       });
 
@@ -33,56 +52,98 @@ export class OpenClawClient {
         );
       }
 
-      return (await response.json()) as T;
+      // Validate response size before consuming the body
+      const contentLength = response.headers.get('content-length');
+      if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_SIZE_BYTES) {
+        throw new OpenClawApiError('Response exceeds maximum allowed size (10MB)', 413);
+      }
+
+      const text = await response.text();
+      if (text.length > MAX_RESPONSE_SIZE_BYTES) {
+        throw new OpenClawApiError('Response exceeds maximum allowed size (10MB)', 413);
+      }
+
+      return JSON.parse(text) as T;
     } catch (error) {
       if (error instanceof OpenClawApiError) {
         throw error;
       }
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new OpenClawConnectionError(
+          `Request to OpenClaw timed out after ${this.timeoutMs}ms`
+        );
+      }
       throw new OpenClawConnectionError(
         `Failed to connect to OpenClaw at ${this.baseUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
+  /**
+   * Check gateway health by sending a minimal chat completion request.
+   * A 400 Bad Request means the gateway is alive (it parsed JSON, rejected input).
+   * A successful response also means healthy.
+   * Connection errors mean the gateway is down.
+   */
   async health(): Promise<OpenClawHealthResponse> {
-    return this.request<OpenClawHealthResponse>('/health');
+    const url = `${this.baseUrl}/v1/chat/completions`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: this.buildHeaders(),
+        body: JSON.stringify({
+          model: 'health-check',
+          messages: [],
+          max_tokens: 1,
+        }),
+      });
+
+      // Both 200 and 400 mean the gateway is alive and processing requests
+      if (response.status >= 200 && response.status < 500) {
+        return { status: 'ok', message: `Gateway responding (HTTP ${response.status})` };
+      }
+
+      return { status: 'error', message: `Gateway error (HTTP ${response.status})` };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new OpenClawConnectionError(
+          `Request to OpenClaw timed out after ${this.timeoutMs}ms`
+        );
+      }
+      throw new OpenClawConnectionError(
+        `Failed to connect to OpenClaw at ${this.baseUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  async chat(message: string, sessionId?: string): Promise<OpenClawChatResponse> {
-    return this.request<OpenClawChatResponse>('/api/message', {
+  /**
+   * Send a chat message via the OpenAI-compatible /v1/chat/completions endpoint.
+   */
+  async chat(message: string, _sessionId?: string): Promise<OpenClawChatResponse> {
+    const completion = await this.request<OpenAIChatCompletionResponse>('/v1/chat/completions', {
       method: 'POST',
       body: JSON.stringify({
-        message,
-        sessionKey: sessionId,
+        model: 'claude-opus-4-5',
+        messages: [{ role: 'user', content: message }],
+        max_tokens: 4096,
       }),
     });
-  }
 
-  async getSessions(channel?: string): Promise<OpenClawSessionsResponse> {
-    const params = channel ? `?channel=${encodeURIComponent(channel)}` : '';
-    return this.request<OpenClawSessionsResponse>(`/api/sessions${params}`);
-  }
+    const content = completion.choices?.[0]?.message?.content ?? '';
 
-  async getHistory(sessionId: string, limit = 50): Promise<OpenClawHistoryResponse> {
-    return this.request<OpenClawHistoryResponse>(
-      `/api/sessions/${encodeURIComponent(sessionId)}/history?limit=${limit}`
-    );
-  }
-
-  async memoryGet(key: string): Promise<OpenClawMemoryResponse> {
-    return this.request<OpenClawMemoryResponse>(`/api/memory/${encodeURIComponent(key)}`);
-  }
-
-  async memorySet(key: string, value: string): Promise<OpenClawMemoryResponse> {
-    return this.request<OpenClawMemoryResponse>('/api/memory', {
-      method: 'POST',
-      body: JSON.stringify({ key, value }),
-    });
-  }
-
-  async memorySearch(query: string): Promise<OpenClawMemoryResponse> {
-    return this.request<OpenClawMemoryResponse>(
-      `/api/memory/search?q=${encodeURIComponent(query)}`
-    );
+    return {
+      response: content,
+      model: completion.model,
+      usage: completion.usage,
+    };
   }
 }

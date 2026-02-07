@@ -1,38 +1,43 @@
-export interface OpenClawSession {
-  sessionKey: string;
-  channel?: string;
-  lastActivity?: string;
-  messageCount?: number;
+// OpenAI-compatible API types
+
+export interface OpenAIChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
 }
 
-export interface OpenClawMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: string;
+export interface OpenAIChatCompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+// MCP-facing types (facade over OpenAI response)
+
+export interface OpenClawChatResponse {
+  response: string;
+  model?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 export interface OpenClawHealthResponse {
   status: 'ok' | 'error';
-  version?: string;
-  uptime?: number;
-}
-
-export interface OpenClawChatResponse {
-  response: string;
-  sessionKey?: string;
-}
-
-export interface OpenClawSessionsResponse {
-  sessions: OpenClawSession[];
-}
-
-export interface OpenClawHistoryResponse {
-  messages: OpenClawMessage[];
-  sessionKey: string;
-}
-
-export interface OpenClawMemoryResponse {
-  value?: string;
-  found?: boolean;
-  results?: Array<{ key: string; value: string; score?: number }>;
+  message?: string;
 }

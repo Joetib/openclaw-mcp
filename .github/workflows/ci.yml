@@ -45,7 +45,6 @@ jobs:
 
       - name: Test
         run: npm run test:run
-        continue-on-error: true
 
       - name: Upload artifacts
         if: matrix.node-version == 20

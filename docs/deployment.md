@@ -2,82 +2,77 @@
 
 ## docker-compose.yml
 
+The provided `docker-compose.yml` runs the MCP bridge server in a hardened container.
+The OpenClaw gateway runs on your host machine (or elsewhere) — the bridge connects to it
+via `host.docker.internal`.
+
 ```yaml
-version: '3.8'
-
 services:
-  openclaw:
-    image: ghcr.io/openclaw/openclaw:latest
-    container_name: openclaw-gateway
-    restart: unless-stopped
-    volumes:
-      - ./openclaw-config:/root/.openclaw
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    networks:
-      - internal
-    # Internal only - not exposed
-    expose:
-      - "18789"
-
   mcp-bridge:
-    image: node:20-slim
+    build: .
     container_name: openclaw-mcp
-    working_dir: /app
-    command: npx openclaw-mcp --transport sse --port 3000
-    environment:
-      - OPENCLAW_URL=http://openclaw:18789
-      - OAUTH_ENABLED=true
-      - API_KEYS=${MCP_API_KEYS}
-      - CORS_ORIGINS=https://claude.ai
-    networks:
-      - internal
-      - web
-    expose:
-      - "3000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.mcp.rule=Host(`mcp.${DOMAIN}`)"
-      - "traefik.http.routers.mcp.tls=true"
-      - "traefik.http.routers.mcp.tls.certresolver=letsencrypt"
-
-  traefik:
-    image: traefik:v3.0
-    container_name: traefik
     restart: unless-stopped
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     ports:
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./letsencrypt:/letsencrypt
-    networks:
-      - web
-
-networks:
-  internal:
-  web:
+      - "${PORT:-3000}:3000"
+    environment:
+      - OPENCLAW_URL=${OPENCLAW_URL:-http://host.docker.internal:18789}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - MCP_CLIENT_ID=${MCP_CLIENT_ID:-openclaw}
+      - MCP_CLIENT_SECRET=${MCP_CLIENT_SECRET:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://claude.ai}
+      - NODE_ENV=production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    security_opt:
+      - no-new-privileges
 ```
 
 ## .env
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...
-DOMAIN=example.com
-ACME_EMAIL=you@example.com
-MCP_API_KEYS=your-secure-api-key-1,your-secure-api-key-2
+# Token for OpenClaw gateway authentication
+OPENCLAW_GATEWAY_TOKEN=your-gateway-token
+
+# MCP OAuth client credentials
+# Generate secret with: openssl rand -hex 32
+MCP_CLIENT_ID=openclaw
+MCP_CLIENT_SECRET=your-client-secret
+
+# Enable OAuth (required for production SSE)
+AUTH_ENABLED=true
+
+# Allowed CORS origins
+CORS_ORIGINS=https://claude.ai
+```
+
+## Quick Start
+
+```bash
+# Copy and edit environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Start the MCP bridge
+docker compose up -d
 ```
 
 ## Security Checklist
 
-- [ ] HTTPS enabled (via reverse proxy)
-- [ ] OAuth/API keys enabled (`OAUTH_ENABLED=true`)
-- [ ] CORS restricted to known origins
-- [ ] OpenClaw gateway not exposed to internet (internal network only)
-- [ ] Secure API keys generated (`openssl rand -hex 32`)
+- [ ] HTTPS enabled (via reverse proxy in front of the MCP bridge)
+- [ ] OAuth enabled (`AUTH_ENABLED=true`)
+- [ ] `MCP_CLIENT_ID` is valid (3–64 chars, alphanumeric/dashes/underscores)
+- [ ] `MCP_CLIENT_SECRET` generated securely (`openssl rand -hex 32`, min 32 chars)
+- [ ] `MCP_ISSUER_URL` set to public HTTPS URL (when behind reverse proxy)
+- [ ] `MCP_REDIRECT_URIS` restricted to known callback URLs
+- [ ] CORS restricted to known origins (`CORS_ORIGINS=https://claude.ai`)
+- [ ] `OPENCLAW_GATEWAY_TOKEN` set for gateway authentication
+- [ ] Dynamic client registration is disabled (default — no `/register` endpoint)
+- [ ] Container runs read-only with no-new-privileges

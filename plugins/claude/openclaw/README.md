@@ -1,13 +1,13 @@
 # OpenClaw Plugin for Claude Code
 
-Connect Claude Code to your OpenClaw AI assistant instance. Chat, manage sessions, access memory, and delegate tasks.
+Connect Claude Code to your OpenClaw AI assistant instance. Chat, check status, and delegate tasks.
 
 ## What's Included
 
 - **MCP Server** - Connects Claude Code to OpenClaw gateway
 - **Skills** - Auto-triggers for OpenClaw interactions
 - **Agents** - `task-delegator` for async task management
-- **Commands** - `/claw:chat`, `/claw:status`, `/claw:memory`
+- **Commands** - `/claw:chat`, `/claw:status`
 
 ## Installation
 
@@ -15,9 +15,10 @@ Connect Claude Code to your OpenClaw AI assistant instance. Chat, manage session
 claude plugin install openclaw
 ```
 
-**Required environment variable:**
+**Required environment variables:**
 ```
 OPENCLAW_URL=http://127.0.0.1:18789
+OPENCLAW_GATEWAY_TOKEN=your-gateway-token
 ```
 
 ## Commands
@@ -28,7 +29,6 @@ Send a message to OpenClaw:
 
 ```
 /claw:chat What's the weather like?
-/claw:chat --session=main Check my calendar
 ```
 
 ### /claw:status
@@ -37,15 +37,6 @@ Check OpenClaw gateway health:
 
 ```
 /claw:status
-```
-
-### /claw:memory
-
-Read or search OpenClaw's memory:
-
-```
-/claw:memory get preferences
-/claw:memory search "project deadlines"
 ```
 
 ## Agents

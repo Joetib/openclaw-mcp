@@ -1,6 +1,6 @@
 ---
 name: openclaw-management
-description: This skill should be used when the user wants to interact with OpenClaw, delegate tasks to their AI assistant, check sessions, or access OpenClaw's memory. Activates for AI assistant delegation and orchestration.
+description: This skill should be used when the user wants to interact with OpenClaw, delegate tasks to their AI assistant, or check gateway status. Activates for AI assistant delegation and orchestration.
 ---
 
 When the user wants to interact with OpenClaw or delegate tasks, use the OpenClaw MCP tools.
@@ -11,8 +11,7 @@ Activate when the user:
 
 - Wants to chat with OpenClaw ("Ask Claw to...", "Tell my assistant...")
 - Delegates tasks ("Have OpenClaw research...", "Let Claw handle...")
-- Checks status ("Is OpenClaw running?", "Show active sessions")
-- Accesses memory ("What does Claw remember about...", "Store this in memory")
+- Checks status ("Is OpenClaw running?")
 - Manages tasks ("Check task progress", "Cancel that task")
 
 ## Tools Reference
@@ -24,10 +23,7 @@ Activate when the user:
 | Task status | `openclaw_task_status` |
 | List tasks | `openclaw_task_list` |
 | Cancel task | `openclaw_task_cancel` |
-| List sessions | `openclaw_sessions` |
-| Get history | `openclaw_history` |
 | Gateway health | `openclaw_status` |
-| Memory ops | `openclaw_memory` |
 
 ## Sync vs Async
 

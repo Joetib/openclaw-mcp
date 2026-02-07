@@ -60,8 +60,8 @@ src/
 
 ```typescript
 // src/mcp/tools/my-tool.ts
-import { OpenClawClient } from '../openclaw/client.js';
-import { createTextResponse, createErrorResponse } from '../utils/response-helpers.js';
+import { OpenClawClient } from '../../openclaw/client.js';
+import { successResponse, errorResponse } from '../../utils/response-helpers.js';
 
 export const myToolDefinition = {
   name: 'openclaw_my_tool',
@@ -77,12 +77,12 @@ export const myToolDefinition = {
 
 export async function handleMyTool(client: OpenClawClient, input: unknown) {
   // Implementation
-  return createTextResponse('Result');
+  return successResponse('Result');
 }
 ```
 
 2. Export from `src/mcp/tools/index.ts`
-3. Register in `src/index.ts` toolHandlers map
+3. Register in `src/server/tools-registration.ts` toolHandlers map
 
 ## Testing
 

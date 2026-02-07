@@ -9,6 +9,7 @@ import type { OpenClawClient } from '../../openclaw/client.js';
 import { successResponse, errorResponse, type ToolResponse } from '../../utils/response-helpers.js';
 import { taskManager, type Task, type TaskStatus } from '../tasks/manager.js';
 import { log } from '../../utils/logger.js';
+import { validateInputIsObject, validateMessage, validateId } from '../../utils/validation.js';
 
 // ============================================================================
 // Tool Definitions
@@ -148,20 +149,34 @@ export function stopTaskProcessor(): void {
 // Tool Handlers
 // ============================================================================
 
-interface ChatAsyncInput {
-  message: string;
-  session_id?: string;
-  priority?: number;
-}
-
 export async function handleOpenclawChatAsync(
   client: OpenClawClient,
   input: unknown
 ): Promise<ToolResponse> {
-  const { message, session_id, priority } = input as ChatAsyncInput;
+  if (!validateInputIsObject(input)) {
+    return errorResponse('Invalid input: expected an object');
+  }
 
-  if (!message || typeof message !== 'string') {
-    return errorResponse('Message is required and must be a string');
+  const msgResult = validateMessage(input.message);
+  if (msgResult.valid === false) {
+    return errorResponse(msgResult.error);
+  }
+
+  let sessionId: string | undefined;
+  if (input.session_id !== undefined) {
+    const sidResult = validateId(input.session_id, 'session_id');
+    if (sidResult.valid === false) {
+      return errorResponse(sidResult.error);
+    }
+    sessionId = sidResult.value;
+  }
+
+  let priority = 0;
+  if (input.priority !== undefined) {
+    if (typeof input.priority !== 'number' || !Number.isInteger(input.priority)) {
+      return errorResponse('priority must be an integer');
+    }
+    priority = input.priority;
   }
 
   // Ensure processor is running
@@ -170,9 +185,9 @@ export async function handleOpenclawChatAsync(
   // Create task
   const task = taskManager.create({
     type: 'chat',
-    input: { message, session_id },
-    sessionId: session_id,
-    priority: priority ?? 0,
+    input: { message: msgResult.value, session_id: sessionId },
+    sessionId,
+    priority,
   });
 
   return successResponse(
@@ -188,19 +203,19 @@ export async function handleOpenclawChatAsync(
   );
 }
 
-interface TaskStatusInput {
-  task_id: string;
-}
-
 export async function handleOpenclawTaskStatus(
   _client: OpenClawClient,
   input: unknown
 ): Promise<ToolResponse> {
-  const { task_id } = input as TaskStatusInput;
-
-  if (!task_id || typeof task_id !== 'string') {
-    return errorResponse('task_id is required');
+  if (!validateInputIsObject(input)) {
+    return errorResponse('Invalid input: expected an object');
   }
+
+  const tidResult = validateId(input.task_id, 'task_id');
+  if (tidResult.valid === false) {
+    return errorResponse(tidResult.error);
+  }
+  const task_id = tidResult.value;
 
   const task = taskManager.get(task_id);
   if (!task) {
@@ -230,16 +245,35 @@ export async function handleOpenclawTaskStatus(
   return successResponse(JSON.stringify(response, null, 2));
 }
 
-interface TaskListInput {
-  status?: TaskStatus;
-  session_id?: string;
-}
+const VALID_TASK_STATUSES = ['pending', 'running', 'completed', 'failed', 'cancelled'] as const;
 
 export async function handleOpenclawTaskList(
   _client: OpenClawClient,
   input: unknown
 ): Promise<ToolResponse> {
-  const { status, session_id } = (input || {}) as TaskListInput;
+  if (!validateInputIsObject(input)) {
+    return errorResponse('Invalid input: expected an object');
+  }
+
+  let status: TaskStatus | undefined;
+  if (input.status !== undefined) {
+    if (
+      typeof input.status !== 'string' ||
+      !VALID_TASK_STATUSES.includes(input.status as TaskStatus)
+    ) {
+      return errorResponse(`status must be one of: ${VALID_TASK_STATUSES.join(', ')}`);
+    }
+    status = input.status as TaskStatus;
+  }
+
+  let session_id: string | undefined;
+  if (input.session_id !== undefined) {
+    const sidResult = validateId(input.session_id, 'session_id');
+    if (sidResult.valid === false) {
+      return errorResponse(sidResult.error);
+    }
+    session_id = sidResult.value;
+  }
 
   const tasks = taskManager.list({ status, sessionId: session_id });
   const stats = taskManager.stats();
@@ -265,19 +299,19 @@ export async function handleOpenclawTaskList(
   );
 }
 
-interface TaskCancelInput {
-  task_id: string;
-}
-
 export async function handleOpenclawTaskCancel(
   _client: OpenClawClient,
   input: unknown
 ): Promise<ToolResponse> {
-  const { task_id } = input as TaskCancelInput;
-
-  if (!task_id || typeof task_id !== 'string') {
-    return errorResponse('task_id is required');
+  if (!validateInputIsObject(input)) {
+    return errorResponse('Invalid input: expected an object');
   }
+
+  const tidResult = validateId(input.task_id, 'task_id');
+  if (tidResult.valid === false) {
+    return errorResponse(tidResult.error);
+  }
+  const task_id = tidResult.value;
 
   const task = taskManager.get(task_id);
   if (!task) {

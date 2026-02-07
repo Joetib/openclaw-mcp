@@ -23,7 +23,8 @@ For local use with Claude Desktop, use stdio transport (default):
       "command": "npx",
       "args": ["openclaw-mcp"],
       "env": {
-        "OPENCLAW_URL": "http://127.0.0.1:18789"
+        "OPENCLAW_URL": "http://127.0.0.1:18789",
+        "OPENCLAW_GATEWAY_TOKEN": "your-gateway-token"
       }
     }
   }
@@ -37,28 +38,50 @@ For local use with Claude Desktop, use stdio transport (default):
 
 ## Claude.ai (Remote Access)
 
-For remote access via Claude.ai, deploy with SSE transport and OAuth:
+For remote access via Claude.ai, deploy with SSE transport and OAuth 2.1 authentication.
+
+### 1. Generate credentials
 
 ```bash
-# Start server with OAuth enabled
-OAUTH_ENABLED=true \
-API_KEYS=your-secure-key \
+export MCP_CLIENT_ID=openclaw
+export MCP_CLIENT_SECRET=$(openssl rand -hex 32)
+echo "Client ID: $MCP_CLIENT_ID"
+echo "Client Secret: $MCP_CLIENT_SECRET"
+```
+
+### 2. Start server
+
+```bash
+AUTH_ENABLED=true \
+MCP_CLIENT_ID=openclaw \
+MCP_CLIENT_SECRET=your-secret \
 CORS_ORIGINS=https://claude.ai \
+OPENCLAW_GATEWAY_TOKEN=your-gateway-token \
 openclaw-mcp --transport sse --port 3000
 ```
 
-Then add to Claude.ai MCP settings:
+### 3. Add to Claude.ai
 
-```json
-{
-  "mcpServers": {
-    "openclaw": {
-      "url": "https://mcp.your-domain.com/sse",
-      "transport": "sse"
-    }
-  }
-}
+In Claude.ai, go to **Settings** → **Integrations** → **Add custom connector**:
+
+- **Name**: `OpenClaw`
+- **URL**: `https://mcp.your-domain.com/mcp`
+- **Client ID**: `openclaw` (or your `MCP_CLIENT_ID`)
+- **Client Secret**: your `MCP_CLIENT_SECRET` value
+
+Claude.ai will automatically perform the OAuth 2.1 flow to connect.
+
+### 4. MCP Inspector (for testing)
+
+```bash
+npx @modelcontextprotocol/inspector
 ```
+
+In the Inspector web UI:
+1. Set **URL** to `http://localhost:3000/mcp`
+2. Set **Transport** to `Streamable HTTP`
+3. Enter your **Client ID** and **Client Secret** (same as `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`)
+4. Click **Connect** — the Inspector will perform the OAuth 2.1 flow automatically
 
 ## CLI Options
 
@@ -67,10 +90,13 @@ openclaw-mcp --help
 
 Options:
   --openclaw-url, -u  OpenClaw gateway URL     [default: "http://127.0.0.1:18789"]
+  --gateway-token     Bearer token for gateway [default: none]
   --transport, -t     Transport mode           [choices: "stdio", "sse"] [default: "stdio"]
   --port, -p          Port for SSE server      [default: 3000]
   --host              Host for SSE server      [default: "0.0.0.0"]
-  --oauth             Enable OAuth             [default: false]
+  --auth              Enable OAuth             [default: false]
+  --client-id         MCP OAuth client ID      [env: MCP_CLIENT_ID]
+  --client-secret     MCP OAuth client secret  [env: MCP_CLIENT_SECRET]
   --version           Show version number
   --help              Show help
 ```
