@@ -6,6 +6,12 @@
 
 🦞 Model Context Protocol (MCP) server for [OpenClaw](https://github.com/openclaw/openclaw) AI assistant integration.
 
+## Demo
+
+<p align="center">
+  <img src="docs/assets/claude-ai-demo.gif" alt="OpenClaw MCP in Claude.ai" width="720" />
+</p>
+
 ## Why I Built This
 
 Hey! I created this MCP server because I didn't want to rely solely on messaging channels to communicate with OpenClaw. What really excites me is the ability to connect OpenClaw to the Claude web UI. Essentially, my chat can delegate tasks to my Claw bot, which then handles everything else — like spinning up Claude Code to fix issues for me.
@@ -41,9 +47,12 @@ Add to your Claude Desktop config:
 
 ```bash
 AUTH_ENABLED=true MCP_CLIENT_ID=openclaw MCP_CLIENT_SECRET=your-secret \
+  MCP_ISSUER_URL=https://mcp.your-domain.com \
   CORS_ORIGINS=https://claude.ai OPENCLAW_GATEWAY_TOKEN=your-gateway-token \
   npx openclaw-mcp --transport sse --port 3000
 ```
+
+> **Important:** When running behind a reverse proxy (Caddy, nginx, etc.), you **must** set `MCP_ISSUER_URL` (or `--issuer-url`) to your public HTTPS URL. Without this, OAuth metadata will advertise `http://localhost:3000` and clients will fail to authenticate.
 
 Then in Claude.ai add a custom connector with your `MCP_CLIENT_ID` and `MCP_CLIENT_SECRET`.
 
@@ -124,7 +133,11 @@ See [Configuration](docs/configuration.md) for all security options.
 ## Requirements
 
 - Node.js ≥ 20
-- OpenClaw gateway running
+- OpenClaw gateway running with HTTP API enabled:
+  ```json5
+  // openclaw.json
+  { "gateway": { "http": { "endpoints": { "chatCompletions": { "enabled": true } } } } }
+  ```
 
 ## License
 

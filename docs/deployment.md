@@ -20,6 +20,8 @@ services:
       - AUTH_ENABLED=${AUTH_ENABLED:-true}
       - MCP_CLIENT_ID=${MCP_CLIENT_ID:-openclaw}
       - MCP_CLIENT_SECRET=${MCP_CLIENT_SECRET:-}
+      - MCP_ISSUER_URL=${MCP_ISSUER_URL:-}
+      - MCP_REDIRECT_URIS=${MCP_REDIRECT_URIS:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://claude.ai}
       - NODE_ENV=production
     extra_hosts:
@@ -49,6 +51,9 @@ MCP_CLIENT_SECRET=your-client-secret
 # Enable OAuth (required for production SSE)
 AUTH_ENABLED=true
 
+# Public URL (required when behind a reverse proxy)
+MCP_ISSUER_URL=https://mcp.your-domain.com
+
 # Allowed CORS origins
 CORS_ORIGINS=https://claude.ai
 ```
@@ -76,3 +81,104 @@ docker compose up -d
 - [ ] `OPENCLAW_GATEWAY_TOKEN` set for gateway authentication
 - [ ] Dynamic client registration is disabled (default — no `/register` endpoint)
 - [ ] Container runs read-only with no-new-privileges
+
+## Reverse Proxy (HTTPS)
+
+The MCP bridge must be served over HTTPS for production use. Use a reverse proxy that handles TLS termination.
+
+> **Important:** You **must** set `MCP_ISSUER_URL` to your public HTTPS URL. Without this, OAuth metadata endpoints will advertise `http://localhost:3000` and MCP clients (including Claude.ai) will fail to authenticate with the error: `Protected resource http://localhost:3000/mcp does not match expected https://your-domain.com/mcp`.
+
+### Caddy (recommended)
+
+Caddy automatically provisions Let's Encrypt certificates.
+
+```
+mcp.your-domain.com {
+    reverse_proxy openclaw-mcp:3000
+}
+```
+
+Add to your `docker-compose.yml`:
+
+```yaml
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  mcp-bridge:
+    # ... (same as above, but remove the ports section)
+    expose:
+      - "3000"
+    environment:
+      - MCP_ISSUER_URL=https://mcp.your-domain.com
+      # ... other env vars
+
+volumes:
+  caddy-data:
+  caddy-config:
+```
+
+### nginx
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name mcp.your-domain.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+## OpenClaw Gateway Prerequisites
+
+The MCP bridge communicates with the OpenClaw gateway via its OpenAI-compatible HTTP API (`/v1/chat/completions`). This endpoint is **disabled by default** — you must enable it in your OpenClaw config:
+
+```json5
+// openclaw.json
+{
+  "gateway": {
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    }
+  }
+}
+```
+
+Without this, the MCP bridge will receive `405 Method Not Allowed` from the gateway.
+
+## Troubleshooting
+
+### `405 Method Not Allowed` from gateway
+
+The OpenClaw gateway's HTTP chat completions endpoint is disabled by default. Enable it in `openclaw.json` — see [Gateway Prerequisites](#openclaw-gateway-prerequisites) above.
+
+### `Protected resource http://localhost:3000/mcp does not match expected https://...`
+
+You're running behind a reverse proxy but haven't set `MCP_ISSUER_URL`. The OAuth metadata endpoints are advertising `http://localhost:3000` instead of your public HTTPS URL. Set `MCP_ISSUER_URL` to your public URL (e.g., `https://mcp.your-domain.com`) or pass `--issuer-url` on the CLI.
+
+### `fetch failed` / MCP bridge can't reach gateway
+
+When both services run in Docker, the MCP bridge must connect via the Docker network hostname (e.g., `http://openclaw-gateway:18789`), not `localhost`. Make sure both containers are on the same Docker network.

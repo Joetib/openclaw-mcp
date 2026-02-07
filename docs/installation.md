@@ -97,6 +97,10 @@ Options:
   --auth              Enable OAuth             [default: false]
   --client-id         MCP OAuth client ID      [env: MCP_CLIENT_ID]
   --client-secret     MCP OAuth client secret  [env: MCP_CLIENT_SECRET]
+  --issuer-url        OAuth issuer URL         [env: MCP_ISSUER_URL]
+  --redirect-uris     Allowed redirect URIs    [env: MCP_REDIRECT_URIS]
   --version           Show version number
   --help              Show help
 ```
+
+> **Note:** `--issuer-url` is required when running behind a reverse proxy (Caddy, nginx, etc.) so that OAuth metadata endpoints return the correct public HTTPS URL instead of `http://localhost:3000`.
