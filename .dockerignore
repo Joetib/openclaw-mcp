@@ -21,5 +21,3 @@ coverage
 # Config files not needed at runtime
 .eslintrc*
 .prettierrc
-tsconfig.json
-tsup.config.ts
