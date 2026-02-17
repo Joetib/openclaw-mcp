@@ -1,6 +1,6 @@
 services:
   mcp-bridge:
-    build: .
+    image: ghcr.io/freema/openclaw-mcp:latest
     container_name: openclaw-mcp
     restart: unless-stopped
     ports:
@@ -11,6 +11,7 @@ services:
       - AUTH_ENABLED=${AUTH_ENABLED:-true}
       - MCP_CLIENT_ID=${MCP_CLIENT_ID:-openclaw}
       - MCP_CLIENT_SECRET=${MCP_CLIENT_SECRET:-}
+      - MCP_ISSUER_URL=${MCP_ISSUER_URL:-}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://claude.ai}
       - NODE_ENV=production
     extra_hosts:

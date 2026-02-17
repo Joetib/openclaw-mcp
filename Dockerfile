@@ -25,10 +25,12 @@ RUN npm ci --omit=dev
 # ---- Runtime stage ----
 FROM node:20-slim AS runtime
 
+ARG VERSION=dev
+
 # OCI image labels
 LABEL org.opencontainers.image.title="openclaw-mcp" \
       org.opencontainers.image.description="Model Context Protocol server for OpenClaw AI assistant integration" \
-      org.opencontainers.image.version="0.1.0" \
+      org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.source="https://github.com/freema/openclaw-mcp" \
       org.opencontainers.image.licenses="MIT"
 

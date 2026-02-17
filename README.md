@@ -3,6 +3,7 @@
 [![npm version](https://badge.fury.io/js/openclaw-mcp.svg)](https://www.npmjs.com/package/openclaw-mcp)
 [![CI](https://github.com/freema/openclaw-mcp/workflows/CI/badge.svg)](https://github.com/freema/openclaw-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GHCR](https://img.shields.io/badge/GHCR-ghcr.io%2Ffreema%2Fopenclaw--mcp-blue?logo=github)](https://github.com/freema/openclaw-mcp/pkgs/container/openclaw-mcp)
 
 <a href="https://glama.ai/mcp/servers/@freema/openclaw-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@freema/openclaw-mcp/badge" />
@@ -23,6 +24,51 @@ Hey! I created this MCP server because I didn't want to rely solely on messaging
 Think of it as an AI assistant orchestrating another AI assistant. Pretty cool, right?
 
 ## Quick Start
+
+### Docker (Recommended)
+
+Pre-built images are published to GitHub Container Registry on every release.
+
+```bash
+docker pull ghcr.io/freema/openclaw-mcp:latest
+```
+
+Create a `docker-compose.yml`:
+
+```yaml
+services:
+  mcp-bridge:
+    image: ghcr.io/freema/openclaw-mcp:latest
+    container_name: openclaw-mcp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENCLAW_URL=http://host.docker.internal:18789
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - AUTH_ENABLED=true
+      - MCP_CLIENT_ID=openclaw
+      - MCP_CLIENT_SECRET=${MCP_CLIENT_SECRET}
+      - MCP_ISSUER_URL=${MCP_ISSUER_URL:-}
+      - CORS_ORIGINS=https://claude.ai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    security_opt:
+      - no-new-privileges
+```
+
+Generate secrets and start:
+
+```bash
+export MCP_CLIENT_SECRET=$(openssl rand -hex 32)
+export OPENCLAW_GATEWAY_TOKEN=your-gateway-token
+docker compose up -d
+```
+
+Then in Claude.ai add a custom MCP connector pointing to your server with `MCP_CLIENT_ID=openclaw` and your `MCP_CLIENT_SECRET`.
+
+> **Tip:** Pin a specific version instead of `latest` for production: `ghcr.io/freema/openclaw-mcp:v1.0.2`
 
 ### Local (Claude Desktop)
 
@@ -47,7 +93,7 @@ Add to your Claude Desktop config:
 }
 ```
 
-### Remote (Claude.ai)
+### Remote (Claude.ai) without Docker
 
 ```bash
 AUTH_ENABLED=true MCP_CLIENT_ID=openclaw MCP_CLIENT_SECRET=your-secret \
@@ -57,8 +103,6 @@ AUTH_ENABLED=true MCP_CLIENT_ID=openclaw MCP_CLIENT_SECRET=your-secret \
 ```
 
 > **Important:** When running behind a reverse proxy (Caddy, nginx, etc.), you **must** set `MCP_ISSUER_URL` (or `--issuer-url`) to your public HTTPS URL. Without this, OAuth metadata will advertise `http://localhost:3000` and clients will fail to authenticate.
-
-Then in Claude.ai add a custom connector with your `MCP_CLIENT_ID` and `MCP_CLIENT_SECRET`.
 
 See [Installation Guide](docs/installation.md) for details.
 
@@ -110,6 +154,8 @@ See [Installation Guide](docs/installation.md) for details.
 - [Installation](docs/installation.md) — Setup for Claude Desktop & Claude.ai
 - [Configuration](docs/configuration.md) — Environment variables & options
 - [Deployment](docs/deployment.md) — Docker & production setup
+- [Threat Model](docs/threat-model.md) — What Claude can/can't trigger, trust boundaries & attack surfaces
+- [Logging](docs/logging.md) — What gets logged, where, and what is never logged
 - [Development](docs/development.md) — Contributing & adding tools
 - [Security](SECURITY.md) — Security policy & best practices
 
