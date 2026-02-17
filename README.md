@@ -68,7 +68,7 @@ docker compose up -d
 
 Then in Claude.ai add a custom MCP connector pointing to your server with `MCP_CLIENT_ID=openclaw` and your `MCP_CLIENT_SECRET`.
 
-> **Tip:** Pin a specific version instead of `latest` for production: `ghcr.io/freema/openclaw-mcp:v1.0.2`
+> **Tip:** Pin a specific version instead of `latest` for production: `ghcr.io/freema/openclaw-mcp:1.1.0`
 
 ### Local (Claude Desktop)
 
