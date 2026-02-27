@@ -5,8 +5,9 @@ import type {
   OpenAIChatCompletionResponse,
 } from './types.js';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
-const MAX_RESPONSE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const DEFAULT_TIMEOUT_MS = Number(process.env.OPENCLAW_TIMEOUT_MS) || 30_000;
+const MAX_RESPONSE_SIZE_BYTES =
+  Number(process.env.OPENCLAW_MAX_RESPONSE_SIZE_BYTES) || 10 * 1024 * 1024; // 10MB
 
 export class OpenClawClient {
   private baseUrl: string;
@@ -55,12 +56,12 @@ export class OpenClawClient {
       // Validate response size before consuming the body
       const contentLength = response.headers.get('content-length');
       if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_SIZE_BYTES) {
-        throw new OpenClawApiError('Response exceeds maximum allowed size (10MB)', 413);
+        throw new OpenClawApiError(`Response exceeds maximum allowed size (${MAX_RESPONSE_SIZE_BYTES / (1024 * 1024)}MB)`, 413);
       }
 
       const text = await response.text();
       if (text.length > MAX_RESPONSE_SIZE_BYTES) {
-        throw new OpenClawApiError('Response exceeds maximum allowed size (10MB)', 413);
+        throw new OpenClawApiError(`Response exceeds maximum allowed size (${MAX_RESPONSE_SIZE_BYTES / (1024 * 1024)}MB)`, 413);
       }
 
       return JSON.parse(text) as T;
@@ -128,14 +129,23 @@ export class OpenClawClient {
   /**
    * Send a chat message via the OpenAI-compatible /v1/chat/completions endpoint.
    */
-  async chat(message: string, _sessionId?: string): Promise<OpenClawChatResponse> {
+  async chat(message: string, sessionId?: string): Promise<OpenClawChatResponse> {
+    const body: Record<string, unknown> = {
+      model: 'claude-opus-4-5',
+      messages: [{ role: 'user', content: message }],
+      max_tokens: 4096,
+    };
+
+    if (sessionId) {
+      body.session_id = sessionId;
+    }
+
     const completion = await this.request<OpenAIChatCompletionResponse>('/v1/chat/completions', {
       method: 'POST',
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        messages: [{ role: 'user', content: message }],
-        max_tokens: 4096,
-      }),
+      body: JSON.stringify(body),
+      headers: {
+        'x-openclaw-session-key': sessionId ?? '',
+      },
     });
 
     const content = completion.choices?.[0]?.message?.content ?? '';
